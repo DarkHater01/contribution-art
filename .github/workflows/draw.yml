@@ -1,0 +1,60 @@
+# Dibuja una imagen en tu contribution graph. Lanzalo desde la pestana Actions:
+# "Draw art" -> Run workflow -> pega la URL de tu imagen.
+name: Draw art
+
+on:
+  workflow_dispatch:
+    inputs:
+      image:
+        description: URL de la imagen, o ruta de un archivo ya en el repo
+        required: true
+      end:
+        description: Fecha final YYYY-MM-DD (por defecto, hoy; usa una pasada)
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  draw:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Identidad del commit (para que cuente en tu perfil)
+        run: |
+          git config user.name "DarkHater01"
+          git config user.email "114360004+DarkHater01@users.noreply.github.com"
+
+      - name: Instalar Pillow
+        run: pip install --quiet pillow
+
+      - name: Obtener la imagen
+        id: img
+        env:
+          IMAGE: ${{ inputs.image }}
+        run: |
+          if [ -f "$IMAGE" ]; then
+            echo "path=$IMAGE" >> "$GITHUB_OUTPUT"
+          else
+            curl -fsSL "$IMAGE" -o "$RUNNER_TEMP/art.png"
+            echo "path=$RUNNER_TEMP/art.png" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Dibujar los commits
+        env:
+          IMG: ${{ steps.img.outputs.path }}
+          END: ${{ inputs.end }}
+        run: |
+          if [ -n "$END" ]; then
+            python3 draw.py "$IMG" --end "$END"
+          else
+            python3 draw.py "$IMG"
+          fi
+
+      - name: Publicar
+        run: git push
